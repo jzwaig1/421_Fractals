@@ -98,7 +98,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hInst = hInstance; // Store instance handle in our global variable
 
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+      CW_USEDEFAULT, CW_USEDEFAULT, 1000, 900, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -146,13 +146,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-
-			HPEN hpen = CreatePen(PS_SOLID, 4, RGB(0, 0, 255));
+			HPEN hpen = CreatePen(PS_SOLID, 1, RGB(0, 0, 255));
 			SelectObject(hdc, hpen);
-			Rectangle(hdc, 10, 10,100, 100);
+            // TODO: Add any drawing code that uses hdc here...
+			drawFractal(&hdc,200,7,500,400);
 			DeleteObject(hpen);
-
             EndPaint(hWnd, &ps);
         }
         break;
@@ -183,4 +181,23 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     return (INT_PTR)FALSE;
+}
+void drawFractal(HDC* hdc, int len, int depth, int x, int y)
+{
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x, y + len);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x + len, y);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x, y - len);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x - len, y);
+	len = len / 2;
+	if (depth > 0)
+	{
+		drawFractal(hdc, len, depth - 1, x + len, y);
+		drawFractal(hdc, len, depth - 1, x - len, y);
+		drawFractal(hdc, len, depth - 1, x, y + len);
+		drawFractal(hdc, len, depth - 1, x, y - len);
+	}
 }
