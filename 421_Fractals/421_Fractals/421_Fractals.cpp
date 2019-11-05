@@ -3,6 +3,8 @@
 
 #include "stdafx.h"
 #include "421_Fractals.h"
+#include <thread>
+#include <mutex>
 
 #define MAX_LOADSTRING 100
 
@@ -10,6 +12,7 @@
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+std::mutex HDCMutex;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -149,7 +152,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			HPEN hpen = CreatePen(PS_SOLID, 1, RGB(0, 0, 255));
 			SelectObject(hdc, hpen);
             // TODO: Add any drawing code that uses hdc here...
-			drawFractal(&hdc,200,7,500,400);
+			drawFractalParallelized(&hdc,200,7,500,400);
 			DeleteObject(hpen);
             EndPaint(hWnd, &ps);
         }
@@ -182,8 +185,10 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return (INT_PTR)FALSE;
 }
+
 void drawFractal(HDC* hdc, int len, int depth, int x, int y)
 {
+	HDCMutex.lock();
 	MoveToEx(*hdc, x, y, NULL);
 	LineTo(*hdc, x, y + len);
 	MoveToEx(*hdc, x, y, NULL);
@@ -192,6 +197,8 @@ void drawFractal(HDC* hdc, int len, int depth, int x, int y)
 	LineTo(*hdc, x, y - len);
 	MoveToEx(*hdc, x, y, NULL);
 	LineTo(*hdc, x - len, y);
+	HDCMutex.unlock();
+
 	len = len / 2;
 	if (depth > 0)
 	{
@@ -199,5 +206,32 @@ void drawFractal(HDC* hdc, int len, int depth, int x, int y)
 		drawFractal(hdc, len, depth - 1, x - len, y);
 		drawFractal(hdc, len, depth - 1, x, y + len);
 		drawFractal(hdc, len, depth - 1, x, y - len);
+	}
+}
+
+void drawFractalParallelized(HDC* hdc, int len, int depth, int x, int y)
+{
+	HDCMutex.lock();
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x, y + len);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x + len, y);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x, y - len);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x - len, y);
+	HDCMutex.unlock();
+	len = len / 2;
+	if (depth > 0)
+	{
+		std::thread rightBranch (drawFractal, hdc, len, depth - 1, x + len, y);
+		std::thread leftBranch (drawFractal, hdc, len, depth - 1, x - len, y);
+		std::thread downBranch (drawFractal, hdc, len, depth - 1, x, y + len);
+		std::thread upBranch (drawFractal, hdc, len, depth - 1, x, y - len);
+
+		rightBranch.join();
+		leftBranch.join();
+		downBranch.join();
+		upBranch.join();
 	}
 }
