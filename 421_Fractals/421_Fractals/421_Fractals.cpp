@@ -152,7 +152,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			HPEN hpen = CreatePen(PS_SOLID, 1, RGB(0, 0, 255));
 			SelectObject(hdc, hpen);
             // TODO: Add any drawing code that uses hdc here...
-			drawFractalParallelized(&hdc,200,7,500,400);
+			drawUp(&hdc,200,8,500,400);
 			DeleteObject(hpen);
             EndPaint(hWnd, &ps);
         }
@@ -208,7 +208,94 @@ void drawFractal(HDC* hdc, int len, int depth, int x, int y)
 		drawFractal(hdc, len, depth - 1, x, y - len);
 	}
 }
+void drawLeft(HDC* hdc, int len, int depth, int x, int y)
+{
+	HDCMutex.lock();
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x, y + len);
+	//MoveToEx(*hdc, x, y, NULL);
+	//LineTo(*hdc, x + len, y);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x, y - len);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x - len, y);
+	HDCMutex.unlock();
 
+	len = len / 2;
+	if (depth > 0)
+	{
+		//drawRight(hdc, len, depth - 1, x + len, y);
+		drawLeft(hdc, len, depth - 1, x - len, y);
+		drawUp(hdc, len, depth - 1, x, y + len);
+		drawDown(hdc, len, depth - 1, x, y - len);
+	}
+}
+void drawRight(HDC* hdc, int len, int depth, int x, int y)
+{
+	HDCMutex.lock();
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x, y + len);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x + len, y);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x, y - len);
+	//MoveToEx(*hdc, x, y, NULL);
+	//LineTo(*hdc, x - len, y);
+	HDCMutex.unlock();
+
+	len = len / 2;
+	if (depth > 0)
+	{
+		drawRight(hdc, len, depth - 1, x + len, y);
+		//drawLeft(hdc, len, depth - 1, x - len, y);
+		drawUp(hdc, len, depth - 1, x, y + len);
+		drawDown(hdc, len, depth - 1, x, y - len);
+	}
+}
+void drawUp(HDC* hdc, int len, int depth, int x, int y)
+{
+	HDCMutex.lock();
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x, y + len);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x + len, y);
+	//MoveToEx(*hdc, x, y, NULL);
+	//LineTo(*hdc, x, y - len);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x - len, y);
+	HDCMutex.unlock();
+
+	len = len / 2;
+	if (depth > 0)
+	{
+		drawRight(hdc, len, depth - 1, x + len, y);
+		drawLeft(hdc, len, depth - 1, x - len, y);
+		drawUp(hdc, len, depth - 1, x, y + len);
+		//drawDown(hdc, len, depth - 1, x, y - len);
+	}
+}
+void drawDown(HDC* hdc, int len, int depth, int x, int y)
+{
+	HDCMutex.lock();
+	//MoveToEx(*hdc, x, y, NULL);
+	//LineTo(*hdc, x, y + len);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x + len, y);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x, y - len);
+	MoveToEx(*hdc, x, y, NULL);
+	LineTo(*hdc, x - len, y);
+	HDCMutex.unlock();
+
+	len = len / 2;
+	if (depth > 0)
+	{
+		drawRight(hdc, len, depth - 1, x + len, y);
+		drawLeft(hdc, len, depth - 1, x - len, y);
+		//drawUp(hdc, len, depth - 1, x, y + len);
+		drawDown(hdc, len, depth - 1, x, y - len);
+	}
+}
 void drawFractalParallelized(HDC* hdc, int len, int depth, int x, int y)
 {
 	HDCMutex.lock();
