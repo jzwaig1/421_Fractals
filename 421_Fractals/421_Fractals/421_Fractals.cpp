@@ -5,6 +5,7 @@
 #include "421_Fractals.h"
 #include <thread>
 #include <mutex>
+#include <vector>
 
 #define MAX_LOADSTRING 100
 
@@ -147,12 +148,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_PAINT:
         {
+			std::vector<int> buffer;
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
 			HPEN hpen = CreatePen(PS_SOLID, 1, RGB(0, 0, 255));
 			SelectObject(hdc, hpen);
             // TODO: Add any drawing code that uses hdc here...
-			drawUp(&hdc,200,8,500,400);
+			drawFractal(&hdc,200,8,500,400,&buffer);
+			for (int i = 0; i < buffer.size(); i+=4)
+			{
+				MoveToEx(hdc, buffer[i], buffer[i+1], NULL);
+				LineTo(hdc, buffer[i+2], buffer[i+3]);
+			}
 			DeleteObject(hpen);
             EndPaint(hWnd, &ps);
         }
@@ -186,8 +193,9 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     return (INT_PTR)FALSE;
 }
 
-void drawFractal(HDC* hdc, int len, int depth, int x, int y)
+void drawFractal(HDC* hdc, int len, int depth, int x, int y, std::vector<int>* buf)
 {
+	/*
 	HDCMutex.lock();
 	MoveToEx(*hdc, x, y, NULL);
 	LineTo(*hdc, x, y + len);
@@ -198,14 +206,30 @@ void drawFractal(HDC* hdc, int len, int depth, int x, int y)
 	MoveToEx(*hdc, x, y, NULL);
 	LineTo(*hdc, x - len, y);
 	HDCMutex.unlock();
-
+	*/
+	buf->push_back(x);
+	buf->push_back(y);
+	buf->push_back(x);
+	buf->push_back(y+len);
+	buf->push_back(x);
+	buf->push_back(y);
+	buf->push_back(x+len);
+	buf->push_back(y);
+	buf->push_back(x);
+	buf->push_back(y);
+	buf->push_back(x);
+	buf->push_back(y-len);
+	buf->push_back(x);
+	buf->push_back(y);
+	buf->push_back(x-len);
+	buf->push_back(y);
 	len = len / 2;
 	if (depth > 0)
 	{
-		drawFractal(hdc, len, depth - 1, x + len, y);
-		drawFractal(hdc, len, depth - 1, x - len, y);
-		drawFractal(hdc, len, depth - 1, x, y + len);
-		drawFractal(hdc, len, depth - 1, x, y - len);
+		drawFractal(hdc, len, depth - 1, x + len, y, buf);
+		drawFractal(hdc, len, depth - 1, x - len, y, buf);
+		drawFractal(hdc, len, depth - 1, x, y + len, buf);
+		drawFractal(hdc, len, depth - 1, x, y - len, buf);
 	}
 }
 void drawLeft(HDC* hdc, int len, int depth, int x, int y)
@@ -296,6 +320,7 @@ void drawDown(HDC* hdc, int len, int depth, int x, int y)
 		drawDown(hdc, len, depth - 1, x, y - len);
 	}
 }
+/*
 void drawFractalParallelized(HDC* hdc, int len, int depth, int x, int y)
 {
 	HDCMutex.lock();
@@ -322,3 +347,4 @@ void drawFractalParallelized(HDC* hdc, int len, int depth, int x, int y)
 		upBranch.join();
 	}
 }
+*/
