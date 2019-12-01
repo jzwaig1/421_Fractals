@@ -282,7 +282,7 @@ void drawFromBuffers(HDC* hdc, std::vector<DrawBuffer>* bufList) {
 		for (int j = 0; j < bufList->size(); j++)
 		{
 			DrawBuffer& dbuf = bufList->at(j);
-			
+
 			dbuf.mutex->lock();
 			while (dbuf.cursor + 3 < (dbuf.buf.size()))
 			{
@@ -391,4 +391,3 @@ void drawDown(HDC* hdc, int len, int depth, int x, int y)
 	}
 }
 */
-
