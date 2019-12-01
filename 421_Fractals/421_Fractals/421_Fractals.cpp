@@ -10,6 +10,8 @@
 
 #define MAX_LOADSTRING 100
 
+using namespace std;
+
 // Global Variables:
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
@@ -22,6 +24,7 @@ bool buf1done = false;
 bool buf2done = false;
 bool buf3done = false;
 bool buf4done = false;
+mutex HDCMutex;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -160,7 +163,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			HPEN hpen = CreatePen(PS_SOLID, 1, RGB(0, 0, 255));
 			SelectObject(hdc, hpen);
             // TODO: Add any drawing code that uses hdc here...
-			drawFractalParallelized(&hdc,200,8,500,400);
+			drawFractalParallelized(&hdc, 200, 8, 500, 400, 3);
 			DeleteObject(hpen);
             EndPaint(hWnd, &ps);
         }
@@ -229,12 +232,15 @@ void drawFractal(HDC* hdc, int len, int depth, int x, int y, DrawBuffer* dbuf)
 	}
 }
 
-void fractalThread(HDC* hdc, int len, int depth, int x, int y, DrawBuffer* dbuf) {
-	drawFractal(hdc, len, depth, x, y, dbuf);
+void fractalThread(HDC* hdc, int len, int depth, int x, int y, DrawBuffer* dbuf, int pDepth) {
+	if(pDepth > 0)
+		drawFractalParallelized(hdc, len, depth, x, y, pDepth);
+	else
+		drawFractal(hdc, len, depth, x, y, dbuf);
 	dbuf->done = true;
 }
 
-void drawFractalParallelized(HDC* hdc, int len, int depth, int x, int y)
+void drawFractalParallelized(HDC* hdc, int len, int depth, int x, int y, int pDepth)
 {
 	std::vector<DrawBuffer> bufList;
 	std::mutex mut1;
@@ -251,15 +257,16 @@ void drawFractalParallelized(HDC* hdc, int len, int depth, int x, int y)
 	bufList.push_back(dbuf4);
 	drawFractal(hdc, len, 0, x, y, &bufList[0]);
 
+	pDepth--;
 	len = len / 2;
 	if (depth > 0)
 	{
-		std::thread rightBranch(fractalThread, hdc, len, depth - 1, x + len, y, &bufList[0]);
-		std::thread leftBranch(fractalThread, hdc, len, depth - 1, x - len, y, &bufList[1]);
-		std::thread downBranch(drawFractal, hdc, len, depth - 1, x, y + len, &bufList[2]);
-		std::thread upBranch(drawFractal, hdc, len, depth - 1, x, y - len, &bufList[3]);
+		std::thread rightBranch(fractalThread, hdc, len, depth - 1, x + len, y, &bufList[0], pDepth);
+		std::thread leftBranch(fractalThread, hdc, len, depth - 1, x - len, y, &bufList[1], pDepth);
+		std::thread downBranch(fractalThread, hdc, len, depth - 1, x, y + len, &bufList[2], pDepth);
+		std::thread upBranch(fractalThread, hdc, len, depth - 1, x, y - len, &bufList[3], pDepth);
 		
-		DrawFromBuffers(hdc, &bufList);
+		drawFromBuffers(hdc, &bufList);
 		rightBranch.join();
 		leftBranch.join();
 		downBranch.join();
@@ -267,9 +274,9 @@ void drawFractalParallelized(HDC* hdc, int len, int depth, int x, int y)
 	}
 }
 
-void DrawFromBuffers(HDC* hdc, std::vector<DrawBuffer>* bufList) {
+void drawFromBuffers(HDC* hdc, std::vector<DrawBuffer>* bufList) {
 	bool allDone = false;
-	while (!allDone) 
+	while (!allDone)
 	{
 		allDone = true;
 		for (int j = 0; j < bufList->size(); j++)
@@ -279,9 +286,11 @@ void DrawFromBuffers(HDC* hdc, std::vector<DrawBuffer>* bufList) {
 			dbuf.mutex->lock();
 			while (dbuf.cursor + 3 < (dbuf.buf.size()))
 			{
+				HDCMutex.lock();
 				MoveToEx(*hdc, dbuf.buf[dbuf.cursor], dbuf.buf[dbuf.cursor + 1], NULL);
 				LineTo(*hdc, dbuf.buf[dbuf.cursor + 2], dbuf.buf[dbuf.cursor + 3]);
 				dbuf.cursor += 4;
+				HDCMutex.unlock();
 			}
 			if (!dbuf.done)
 				allDone = false;
