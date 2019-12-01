@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "421_Fractals.h"
+#include "DrawBuffer.h"
 #include <thread>
 #include <mutex>
 #include <vector>
@@ -13,7 +14,14 @@
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-std::mutex HDCMutex;
+std::vector<int> buf1;
+std::vector<int> buf2;
+std::vector<int> buf3;
+std::vector<int> buf4;
+bool buf1done = false;
+bool buf2done = false;
+bool buf3done = false;
+bool buf4done = false;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -58,8 +66,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     return (int) msg.wParam;
 }
-
-
 
 //
 //  FUNCTION: MyRegisterClass()
@@ -154,12 +160,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			HPEN hpen = CreatePen(PS_SOLID, 1, RGB(0, 0, 255));
 			SelectObject(hdc, hpen);
             // TODO: Add any drawing code that uses hdc here...
-			drawFractal(&hdc,200,8,500,400,&buffer);
-			for (int i = 0; i < buffer.size(); i+=4)
-			{
-				MoveToEx(hdc, buffer[i], buffer[i+1], NULL);
-				LineTo(hdc, buffer[i+2], buffer[i+3]);
-			}
+			drawFractalParallelized(&hdc,200,8,500,400);
 			DeleteObject(hpen);
             EndPaint(hWnd, &ps);
         }
@@ -193,46 +194,103 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     return (INT_PTR)FALSE;
 }
 
-void drawFractal(HDC* hdc, int len, int depth, int x, int y, std::vector<int>* buf)
+void drawFractal(HDC* hdc, int len, int depth, int x, int y, DrawBuffer* dbuf)
 {
-	/*
-	HDCMutex.lock();
-	MoveToEx(*hdc, x, y, NULL);
-	LineTo(*hdc, x, y + len);
-	MoveToEx(*hdc, x, y, NULL);
-	LineTo(*hdc, x + len, y);
-	MoveToEx(*hdc, x, y, NULL);
-	LineTo(*hdc, x, y - len);
-	MoveToEx(*hdc, x, y, NULL);
-	LineTo(*hdc, x - len, y);
-	HDCMutex.unlock();
-	*/
+	dbuf->mutex->lock();
+
+	std::vector<int>* buf = &dbuf->buf;
+
 	buf->push_back(x);
 	buf->push_back(y);
 	buf->push_back(x);
-	buf->push_back(y+len);
+	buf->push_back(y + len);
 	buf->push_back(x);
 	buf->push_back(y);
-	buf->push_back(x+len);
+	buf->push_back(x + len);
 	buf->push_back(y);
 	buf->push_back(x);
 	buf->push_back(y);
 	buf->push_back(x);
-	buf->push_back(y-len);
+	buf->push_back(y - len);
 	buf->push_back(x);
 	buf->push_back(y);
-	buf->push_back(x-len);
+	buf->push_back(x - len);
 	buf->push_back(y);
+
+	dbuf->mutex->unlock();
+
 	len = len / 2;
 	if (depth > 0)
 	{
-		drawFractal(hdc, len, depth - 1, x + len, y, buf);
-		drawFractal(hdc, len, depth - 1, x - len, y, buf);
-		drawFractal(hdc, len, depth - 1, x, y + len, buf);
-		drawFractal(hdc, len, depth - 1, x, y - len, buf);
+		drawFractal(hdc, len, depth - 1, x + len, y, dbuf);
+		drawFractal(hdc, len, depth - 1, x - len, y, dbuf);
+		drawFractal(hdc, len, depth - 1, x, y + len, dbuf);
+		drawFractal(hdc, len, depth - 1, x, y - len, dbuf);
 	}
 }
-void drawLeft(HDC* hdc, int len, int depth, int x, int y)
+
+void fractalThread(HDC* hdc, int len, int depth, int x, int y, DrawBuffer* dbuf) {
+	drawFractal(hdc, len, depth, x, y, dbuf);
+	dbuf->done = true;
+}
+
+void drawFractalParallelized(HDC* hdc, int len, int depth, int x, int y)
+{
+	std::vector<DrawBuffer> bufList;
+	std::mutex mut1;
+	DrawBuffer dbuf1(&mut1);
+	bufList.push_back(dbuf1);
+	std::mutex mut2;
+	DrawBuffer dbuf2(&mut2);
+	bufList.push_back(dbuf2);
+	std::mutex mut3;
+	DrawBuffer dbuf3(&mut3);
+	bufList.push_back(dbuf3);
+	std::mutex mut4;
+	DrawBuffer dbuf4(&mut4);
+	bufList.push_back(dbuf4);
+	drawFractal(hdc, len, 0, x, y, &bufList[0]);
+
+	len = len / 2;
+	if (depth > 0)
+	{
+		std::thread rightBranch(fractalThread, hdc, len, depth - 1, x + len, y, &bufList[0]);
+		std::thread leftBranch(fractalThread, hdc, len, depth - 1, x - len, y, &bufList[1]);
+		std::thread downBranch(drawFractal, hdc, len, depth - 1, x, y + len, &bufList[2]);
+		std::thread upBranch(drawFractal, hdc, len, depth - 1, x, y - len, &bufList[3]);
+		
+		DrawFromBuffers(hdc, &bufList);
+		rightBranch.join();
+		leftBranch.join();
+		downBranch.join();
+		upBranch.join();
+	}
+}
+
+void DrawFromBuffers(HDC* hdc, std::vector<DrawBuffer>* bufList) {
+	bool allDone = false;
+	while (!allDone) 
+	{
+		allDone = true;
+		for (int j = 0; j < bufList->size(); j++)
+		{
+			DrawBuffer& dbuf = bufList->at(j);
+			
+			dbuf.mutex->lock();
+			while (dbuf.cursor + 3 < (dbuf.buf.size()))
+			{
+				MoveToEx(*hdc, dbuf.buf[dbuf.cursor], dbuf.buf[dbuf.cursor + 1], NULL);
+				LineTo(*hdc, dbuf.buf[dbuf.cursor + 2], dbuf.buf[dbuf.cursor + 3]);
+				dbuf.cursor += 4;
+			}
+			if (!dbuf.done)
+				allDone = false;
+			dbuf.mutex->unlock();
+		}
+	}
+}
+
+/*void drawLeft(HDC* hdc, int len, int depth, int x, int y)
 {
 	HDCMutex.lock();
 	MoveToEx(*hdc, x, y, NULL);
@@ -254,6 +312,7 @@ void drawLeft(HDC* hdc, int len, int depth, int x, int y)
 		drawDown(hdc, len, depth - 1, x, y - len);
 	}
 }
+
 void drawRight(HDC* hdc, int len, int depth, int x, int y)
 {
 	HDCMutex.lock();
@@ -276,6 +335,7 @@ void drawRight(HDC* hdc, int len, int depth, int x, int y)
 		drawDown(hdc, len, depth - 1, x, y - len);
 	}
 }
+
 void drawUp(HDC* hdc, int len, int depth, int x, int y)
 {
 	HDCMutex.lock();
@@ -298,6 +358,7 @@ void drawUp(HDC* hdc, int len, int depth, int x, int y)
 		//drawDown(hdc, len, depth - 1, x, y - len);
 	}
 }
+
 void drawDown(HDC* hdc, int len, int depth, int x, int y)
 {
 	HDCMutex.lock();
@@ -320,31 +381,5 @@ void drawDown(HDC* hdc, int len, int depth, int x, int y)
 		drawDown(hdc, len, depth - 1, x, y - len);
 	}
 }
-/*
-void drawFractalParallelized(HDC* hdc, int len, int depth, int x, int y)
-{
-	HDCMutex.lock();
-	MoveToEx(*hdc, x, y, NULL);
-	LineTo(*hdc, x, y + len);
-	MoveToEx(*hdc, x, y, NULL);
-	LineTo(*hdc, x + len, y);
-	MoveToEx(*hdc, x, y, NULL);
-	LineTo(*hdc, x, y - len);
-	MoveToEx(*hdc, x, y, NULL);
-	LineTo(*hdc, x - len, y);
-	HDCMutex.unlock();
-	len = len / 2;
-	if (depth > 0)
-	{
-		std::thread rightBranch (drawFractal, hdc, len, depth - 1, x + len, y);
-		std::thread leftBranch (drawFractal, hdc, len, depth - 1, x - len, y);
-		std::thread downBranch (drawFractal, hdc, len, depth - 1, x, y + len);
-		std::thread upBranch (drawFractal, hdc, len, depth - 1, x, y - len);
-
-		rightBranch.join();
-		leftBranch.join();
-		downBranch.join();
-		upBranch.join();
-	}
-}
 */
+
