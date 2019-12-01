@@ -256,8 +256,8 @@ void drawFractalParallelized(HDC* hdc, int len, int depth, int x, int y)
 	{
 		std::thread rightBranch(fractalThread, hdc, len, depth - 1, x + len, y, &bufList[0]);
 		std::thread leftBranch(fractalThread, hdc, len, depth - 1, x - len, y, &bufList[1]);
-		std::thread downBranch(drawFractal, hdc, len, depth - 1, x, y + len, &bufList[2]);
-		std::thread upBranch(drawFractal, hdc, len, depth - 1, x, y - len, &bufList[3]);
+		std::thread downBranch(fractalThread, hdc, len, depth - 1, x, y + len, &bufList[2]);
+		std::thread upBranch(fractalThread, hdc, len, depth - 1, x, y - len, &bufList[3]);
 		
 		DrawFromBuffers(hdc, &bufList);
 		rightBranch.join();
