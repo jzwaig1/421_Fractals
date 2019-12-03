@@ -163,7 +163,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			HPEN hpen = CreatePen(PS_SOLID, 1, RGB(0, 0, 255));
 			SelectObject(hdc, hpen);
             // TODO: Add any drawing code that uses hdc here...
-			drawFractalParallelized(&hdc, 200, 8, 500, 400, 3);
+			drawFractalParallelized(&hdc, 200, 8, 500, 400, 2);
+			/*
+			draw1Fractal(&hdc, 200, 8, 500, 400, &buffer);
+			for (int i = 0; i < buffer.size(); i += 4)
+			{
+				MoveToEx(hdc, buffer[i], buffer[i + 1], NULL);
+				LineTo(hdc, buffer[i + 2], buffer[i + 3]);
+			}
+			*/
 			DeleteObject(hpen);
             EndPaint(hWnd, &ps);
         }
@@ -229,6 +237,34 @@ void drawFractal(HDC* hdc, int len, int depth, int x, int y, DrawBuffer* dbuf)
 		drawFractal(hdc, len, depth - 1, x - len, y, dbuf);
 		drawFractal(hdc, len, depth - 1, x, y + len, dbuf);
 		drawFractal(hdc, len, depth - 1, x, y - len, dbuf);
+	}
+}
+void draw1Fractal(HDC* hdc, int len, int depth, int x, int y, std::vector<int>* buf)
+{
+	buf->push_back(x);
+	buf->push_back(y);
+	buf->push_back(x);
+	buf->push_back(y + len);
+	buf->push_back(x);
+	buf->push_back(y);
+	buf->push_back(x + len);
+	buf->push_back(y);
+	buf->push_back(x);
+	buf->push_back(y);
+	buf->push_back(x);
+	buf->push_back(y - len);
+	buf->push_back(x);
+	buf->push_back(y);
+	buf->push_back(x - len);
+	buf->push_back(y);
+
+	len = len / 2;
+	if (depth > 0)
+	{
+		draw1Fractal(hdc, len, depth - 1, x + len, y, buf);
+		draw1Fractal(hdc, len, depth - 1, x - len, y, buf);
+		draw1Fractal(hdc, len, depth - 1, x, y + len, buf);
+		draw1Fractal(hdc, len, depth - 1, x, y - len, buf);
 	}
 }
 
