@@ -1,5 +1,4 @@
 ﻿  421_Fractals.cpp
-C:\Users\Jon\Documents\GitHub\421_Fractals\421_Fractals\421_Fractals\421_Fractals.cpp(169,22): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Jon\Documents\GitHub\421_Fractals\421_Fractals\421_Fractals\421_Fractals.cpp(318,21): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Jon\Documents\GitHub\421_Fractals\421_Fractals\421_Fractals\421_Fractals.cpp(323,27): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Jon\Documents\GitHub\421_Fractals\421_Fractals\421_Fractals\421_Fractals.cpp(331,21): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Jon\Documents\GitHub\421_Fractals\421_Fractals\421_Fractals\421_Fractals.cpp(336,27): warning C4018: '<': signed/unsigned mismatch
   421_Fractals.vcxproj -> C:\Users\Jon\Documents\GitHub\421_Fractals\421_Fractals\Debug\421_Fractals.exe

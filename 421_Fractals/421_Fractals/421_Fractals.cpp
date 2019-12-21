@@ -111,7 +111,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hInst = hInstance; // Store instance handle in our global variable
 
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, CW_USEDEFAULT, 1000, 900, nullptr, nullptr, hInstance, nullptr);
+      CW_USEDEFAULT, CW_USEDEFAULT, 1000, 1000, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -162,16 +162,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             HDC hdc = BeginPaint(hWnd, &ps);
 			HPEN hpen = CreatePen(PS_SOLID, 1, RGB(0, 0, 255));
 			SelectObject(hdc, hpen);
-            // TODO: Add any drawing code that uses hdc here...
-			drawFractalParallelized(&hdc, 200, 8, 500, 400, 2);
+            // Multi-Threaded Calls
 			/*
-			draw1Fractal(&hdc, 200, 8, 500, 400, &buffer);
+			std::thread frac1(drawFractalParallelized, &hdc, 200, 8, 700, 600, 1);
+			std::thread frac2(drawFractalParallelized, &hdc, 200, 8, 200, 200, 1);
+			std::thread frac3(drawFractalParallelized, &hdc, 200, 8, 200, 600, 1);
+			std::thread frac4(drawFractalParallelized, &hdc, 200, 8, 700, 200, 1);
+			frac1.join();
+			frac2.join();
+			frac3.join();
+			frac4.join();
+			*/
+			//drawFractalParallelized(&hdc, 200, 8, 500, 500, 1);
+
+			// Non-Threaded Calls
+			draw1Fractal(&hdc, 200, 10, 500, 500, &buffer);
+			//draw1Fractal(&hdc, 200, 8, 200, 200, &buffer);
+			//draw1Fractal(&hdc, 200, 8, 200, 600, &buffer);
+			//draw1Fractal(&hdc, 200, 8, 700, 200, &buffer);
 			for (int i = 0; i < buffer.size(); i += 4)
 			{
 				MoveToEx(hdc, buffer[i], buffer[i + 1], NULL);
 				LineTo(hdc, buffer[i + 2], buffer[i + 3]);
 			}
-			*/
 			DeleteObject(hpen);
             EndPaint(hWnd, &ps);
         }
